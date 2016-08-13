@@ -1387,13 +1387,13 @@ void status_display ()
 
             #ifdef WIN
 
-            __time64_t runtime_left = data.proc_start + data.runtime - runtime_cur;
+            __time64_t runtime_left = data.proc_start + data.runtime + data.prepare_time - runtime_cur;
 
             tmp = _gmtime64 (&runtime_left);
 
             #else
 
-            time_t runtime_left = data.proc_start + data.runtime - runtime_cur;
+            time_t runtime_left = data.proc_start + data.runtime + data.prepare_time - runtime_cur;
 
             tmp = gmtime (&runtime_left);
 
@@ -3592,7 +3592,7 @@ static int autotune (hc_device_param_t *device_param)
   {
     for (int i = 0; i < STEPS_CNT; i++)
     {
-      const u32 kernel_accel_try = 1 << i;
+      const u32 kernel_accel_try = 1u << i;
 
       if (kernel_accel_try < kernel_accel_min) continue;
       if (kernel_accel_try > kernel_accel_max) break;
@@ -4692,7 +4692,7 @@ static void *thread_monitor (void *p)
 
       time (&runtime_cur);
 
-      int runtime_left = data.proc_start + data.runtime - runtime_cur;
+      int runtime_left = data.proc_start + data.runtime + data.prepare_time - runtime_cur;
 
       if (runtime_left <= 0)
       {
@@ -6175,6 +6175,10 @@ int main (int argc, char **argv)
 
   data.proc_start = proc_start;
 
+  time_t prepare_start;
+
+  time (&prepare_start);
+
   int    myargc = argc;
   char **myargv = argv;
 
@@ -6600,7 +6604,8 @@ int main (int argc, char **argv)
 
   #endif
 
-  if (getenv ("TMP") == NULL)
+  //if (getenv ("TMP") == NULL)
+  if (1)
   {
     char tmp[1000];
 
@@ -13840,14 +13845,14 @@ int main (int argc, char **argv)
 
     if (bitmap_max < bitmap_min) bitmap_max = bitmap_min;
 
-    uint *bitmap_s1_a = (uint *) mymalloc ((1 << bitmap_max) * sizeof (uint));
-    uint *bitmap_s1_b = (uint *) mymalloc ((1 << bitmap_max) * sizeof (uint));
-    uint *bitmap_s1_c = (uint *) mymalloc ((1 << bitmap_max) * sizeof (uint));
-    uint *bitmap_s1_d = (uint *) mymalloc ((1 << bitmap_max) * sizeof (uint));
-    uint *bitmap_s2_a = (uint *) mymalloc ((1 << bitmap_max) * sizeof (uint));
-    uint *bitmap_s2_b = (uint *) mymalloc ((1 << bitmap_max) * sizeof (uint));
-    uint *bitmap_s2_c = (uint *) mymalloc ((1 << bitmap_max) * sizeof (uint));
-    uint *bitmap_s2_d = (uint *) mymalloc ((1 << bitmap_max) * sizeof (uint));
+    uint *bitmap_s1_a = (uint *) mymalloc ((1u << bitmap_max) * sizeof (uint));
+    uint *bitmap_s1_b = (uint *) mymalloc ((1u << bitmap_max) * sizeof (uint));
+    uint *bitmap_s1_c = (uint *) mymalloc ((1u << bitmap_max) * sizeof (uint));
+    uint *bitmap_s1_d = (uint *) mymalloc ((1u << bitmap_max) * sizeof (uint));
+    uint *bitmap_s2_a = (uint *) mymalloc ((1u << bitmap_max) * sizeof (uint));
+    uint *bitmap_s2_b = (uint *) mymalloc ((1u << bitmap_max) * sizeof (uint));
+    uint *bitmap_s2_c = (uint *) mymalloc ((1u << bitmap_max) * sizeof (uint));
+    uint *bitmap_s2_d = (uint *) mymalloc ((1u << bitmap_max) * sizeof (uint));
 
     uint bitmap_bits;
     uint bitmap_nums;
@@ -13858,7 +13863,7 @@ int main (int argc, char **argv)
     {
       if (data.quiet == 0) log_info_nn ("Generating bitmap tables with %u bits...", bitmap_bits);
 
-      bitmap_nums = 1 << bitmap_bits;
+      bitmap_nums = 1u << bitmap_bits;
 
       bitmap_mask = bitmap_nums - 1;
 
@@ -13872,7 +13877,7 @@ int main (int argc, char **argv)
       break;
     }
 
-    bitmap_nums = 1 << bitmap_bits;
+    bitmap_nums = 1u << bitmap_bits;
 
     bitmap_mask = bitmap_nums - 1;
 
@@ -14162,7 +14167,7 @@ int main (int argc, char **argv)
 
       for (uint platform_id = 0; platform_id < platforms_cnt; platform_id++)
       {
-        if ((opencl_platforms_filter & (1 << platform_id)) == 0) continue;
+        if ((opencl_platforms_filter & (1u << platform_id)) == 0) continue;
 
         cl_platform_id platform = platforms[platform_id];
 
@@ -14294,7 +14299,7 @@ int main (int argc, char **argv)
         platform_vendor_id = VENDOR_ID_GENERIC;
       }
 
-      uint platform_skipped = ((opencl_platforms_filter & (1 << platform_id)) == 0);
+      uint platform_skipped = ((opencl_platforms_filter & (1u << platform_id)) == 0);
 
       CL_err = hc_clGetDeviceIDs (data.ocl, platform, CL_DEVICE_TYPE_ALL, DEVICES_MAX, platform_devices, &platform_devices_cnt);
 
@@ -14801,7 +14806,7 @@ int main (int argc, char **argv)
 
         // skipped
 
-        device_param->skipped |= ((devices_filter      & (1 << device_id)) == 0);
+        device_param->skipped |= ((devices_filter      & (1u << device_id)) == 0);
         device_param->skipped |= ((device_types_filter & (device_type))    == 0);
 
         // driver_version
@@ -15844,7 +15849,7 @@ int main (int argc, char **argv)
         {
           size_scrypt = (128 * scrypt_r) * scrypt_N;
 
-          size_scrypt /= 1 << tmto;
+          size_scrypt /= 1u << tmto;
 
           size_scrypt *= device_param->device_processors * device_param->kernel_threads * device_param->kernel_accel_max;
 
@@ -19435,6 +19440,8 @@ int main (int argc, char **argv)
 
         data.runtime_start = runtime_start;
 
+        data.prepare_time += runtime_start - prepare_start;
+
         for (uint device_id = 0; device_id < data.devices_cnt; device_id++)
         {
           hc_device_param_t *device_param = &devices_param[device_id];
@@ -19523,6 +19530,8 @@ int main (int argc, char **argv)
 
         logfile_sub_uint (runtime_start);
         logfile_sub_uint (runtime_stop);
+
+        time (&prepare_start);
 
         logfile_sub_msg ("STOP");
 
